@@ -3,16 +3,16 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     //Initial base status of the player
-    [SerializeField] private int  baseHealth = 100;
-    [SerializeField] private float baseAttack= 10f;
-    [SerializeField] private float baseDefense = 5f;
-    [SerializeField] private float baseSpeed = 5f;
+    [SerializeField] private static float baseHealth = 100;
+    [SerializeField] private static float baseAttack= 10f;
+    [SerializeField] private static float baseDefense = 5f;
+    [SerializeField] private static float baseSpeed = 5f;
 
     //Initial current status of the player
-    [SerializeField] private int currentHealth;
-    [SerializeField] private int currentAttack;
-    [SerializeField] private int currentDefense;
-    [SerializeField] private float currentSpeed;
+    private float currentHealth = baseHealth;
+    private float currentAttack = baseAttack;
+    private float currentDefense = baseDefense;
+    private float currentSpeed = baseSpeed;
 
     //IDK 
     private Rigidbody2D rb;
@@ -75,6 +75,16 @@ public class Player : MonoBehaviour
         else
         {
             animator.SetBool("isRunning", false);
+        }
+    }
+
+    public void TakeDamage(float damage)
+    {
+        currentHealth -= damage;
+        print("Player took " + damage + " damage. Current health: " + currentHealth);
+        if (currentHealth <= 0)
+        {
+            print("Player has died.");
         }
     }
 }
