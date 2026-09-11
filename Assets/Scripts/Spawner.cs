@@ -7,7 +7,7 @@ public class Spawner : MonoBehaviour
     //Spawn settings
     [SerializeField] private GameObject[] obstaclePrefabs;
     [SerializeField] private float spawnInterval = 4f;
-    [SerializeField] private float spawnPadding = 4f;
+    [SerializeField] private float spawnPadding = 8f;
     private float spawnTimer = 0f;
 
     CinemachineCamera cinemachineCamera;
