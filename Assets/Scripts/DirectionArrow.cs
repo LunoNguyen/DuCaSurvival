@@ -3,51 +3,46 @@ using UnityEngine;
 public class DirectionArrow : MonoBehaviour
 {
     [SerializeField] private Transform playerTransform;
-    private Vector2 direction;
-
-    //The Circle that allow arrow floating around
     [SerializeField] private float circleRadius = 2f;
-    private Vector2 circleCenter;
+    [SerializeField] private float spriteAngleOffset = -90f; // -90 if sprite points UP, 0 if it points RIGHT
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private Camera mainCam;
+    private Vector2 currentDirection = Vector2.right;
+
+    void Awake()
     {
-        circleCenter = playerTransform.position;
-        direction = Vector2.up; // Default direction
+        mainCam = Camera.main;
     }
 
-    // Update is called once per frame
     void LateUpdate()
     {
-        if(playerTransform == null)
+        if (playerTransform == null)
         {
-            Destroy(gameObject); // Destroy the arrow if the player is not found
+            Destroy(gameObject);
+            return;
         }
-        UpdateArrowDirection();
-        PlayerTracking();
+
+        UpdateArrow();
     }
 
-    void PlayerTracking()
+    void UpdateArrow()
     {
-        if(playerTransform != null)
-        {
-            circleCenter = (Vector2)playerTransform.position;
-        }
-    }
+        // 1. Get current player position directly (prevents 1-frame lag)
+        Vector2 playerPos = playerTransform.position;
 
-    void UpdateArrowPosition()
-    {
-        Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mousePos.z = 0f; // Ensure the z-coordinate is zero for 2D
-        Vector2 directionToMouse = ((Vector2)mousePos - circleCenter).normalized;
-        direction = directionToMouse;
-        transform.position = circleCenter + direction * circleRadius;
-    }
+        // 2. Mouse position in world coordinates
+        Vector3 mouseScreenPos = Input.mousePosition;
+        mouseScreenPos.z = -mainCam.transform.position.z;
+        Vector2 mouseWorldPos = mainCam.ScreenToWorldPoint(mouseScreenPos);
 
-    void UpdateArrowDirection()
-    {
-        UpdateArrowPosition();
-        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.Euler(0f, 0f, angle - 90f); // Adjust for arrow pointing up
+        // 3. Direction vector
+        Vector2 directionToMouse = (mouseWorldPos - playerPos).normalized;
+
+        // 4. Update Position
+        transform.position = playerPos + (directionToMouse * circleRadius);
+
+        // 5. Update Rotation
+        float angle = Mathf.Atan2(directionToMouse.y, directionToMouse.x) * Mathf.Rad2Deg;
+        transform.rotation = Quaternion.Euler(0f, 0f, angle + spriteAngleOffset);
     }
 }

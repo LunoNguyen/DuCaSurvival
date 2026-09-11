@@ -3,10 +3,10 @@ using UnityEngine;
 public class Obstacle : MonoBehaviour
 {
     [Header("Stats")]
-    [SerializeField] private int baseHealth = 30;
+    [SerializeField] private float baseHealth = 30f;
     [SerializeField] private float baseDamage = 5f;
     [SerializeField] private float baseSpeed = 3f;
-    [SerializeField] private float attackCooldown = 1f;
+    [SerializeField] private float attackCooldown = 1.5f;
 
     private Rigidbody2D rb;
     private Transform playerTransform;
@@ -81,7 +81,7 @@ public class Obstacle : MonoBehaviour
         }
     }
 
-    public void TakeDamage(int damage)
+    public void TakeDamage(float damage)
     {
         baseHealth -= damage;
         if (baseHealth <= 0)

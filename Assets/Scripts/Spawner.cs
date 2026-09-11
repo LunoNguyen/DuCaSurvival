@@ -1,39 +1,37 @@
-using System.Threading;
 using Unity.Cinemachine;
 using UnityEngine;
 
 public class Spawner : MonoBehaviour
 {
-    //Spawn settings
+    [Header("Spawn Settings")]
     [SerializeField] private GameObject[] obstaclePrefabs;
-    [SerializeField] private float spawnInterval = 4f;
-    [SerializeField] private float spawnPadding = 8f;
+    [SerializeField] private float spawnInterval = 3f;
+    [SerializeField] private float spawnBuffer = 2f;
+
+    [Header("References")]
+    [SerializeField] private CinemachineCamera cinemachineCamera;
+    [SerializeField] private Player player;
+
     private float spawnTimer = 0f;
 
-    CinemachineCamera cinemachineCamera;
-    private Player player;
-
-    //Awake is called when the script instance is being loaded
     void Awake()
     {
-        cinemachineCamera = FindObjectOfType<CinemachineCamera>();
-        player = FindObjectOfType<Player>();
-        InvokeRepeating("SpawnObstacle", 0f, spawnInterval);
-        cinemachineCamera.Follow = player.transform;
+        if (cinemachineCamera == null)
+            cinemachineCamera = FindFirstObjectByType<CinemachineCamera>();
+
+        if (player == null)
+            player = FindFirstObjectByType<Player>();
+
+        if (cinemachineCamera != null && player != null)
+        {
+            cinemachineCamera.Follow = player.transform;
+        }
     }
 
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
     void Update()
     {
         spawnTimer += Time.deltaTime;
-        if(spawnTimer > spawnInterval)
+        if (spawnTimer >= spawnInterval)
         {
             SpawnObstacle();
             spawnTimer = 0f;
@@ -42,36 +40,56 @@ public class Spawner : MonoBehaviour
 
     void SpawnObstacle()
     {
-        if (player == null)
-        {
-            return; // Exit if player is not found
-        }
-        Vector3 cameraPos = GetRandomPositionOutsideCameraBounds();
+        if (obstaclePrefabs == null || obstaclePrefabs.Length == 0) return;
+        if (cinemachineCamera == null) return;
 
-        Vector3 spawnPosition = new Vector3(cameraPos.x, cameraPos.y, 0f);
+        Vector2 spawnPos = GetRandomPositionOutsideCameraBounds();
         int randomIndex = Random.Range(0, obstaclePrefabs.Length);
-        GameObject obstaclePrefab = obstaclePrefabs[randomIndex];
-        Instantiate(obstaclePrefab, spawnPosition, Quaternion.identity);
+        GameObject selectedPrefab = obstaclePrefabs[randomIndex];
+
+        if (selectedPrefab != null)
+        {
+            Instantiate(selectedPrefab, spawnPos, Quaternion.identity);
+        }
     }
 
     private Vector2 GetRandomPositionOutsideCameraBounds()
     {
-        Vector3 cameraPosition = cinemachineCamera.transform.position;
-        float cameraHeight = cinemachineCamera.Lens.OrthographicSize * 2f;
-        float cameraWidth = cameraHeight * cinemachineCamera.Lens.Aspect;
-        float spawnX = Random.Range(cameraPosition.x - cameraWidth, cameraPosition.x + cameraWidth);
-        float spawnY = Random.Range(cameraPosition.y - cameraHeight, cameraPosition.y + cameraHeight);
+        Camera mainCam = Camera.main;
+        Vector3 camCenter = cinemachineCamera.transform.position;
 
-        //Padding to ensure the spawn position is outside the camera bounds
-        if (spawnX > cameraPosition.x - spawnPadding && spawnX < cameraPosition.x + spawnPadding)
+        // Calculate visible half-bounds in world units
+        float halfHeight = cinemachineCamera.Lens.OrthographicSize;
+        float aspect = mainCam != null ? mainCam.aspect : (16f / 9f);
+        float halfWidth = halfHeight * aspect;
+
+        // Choose one of the 4 borders: 0 = Top, 1 = Bottom, 2 = Left, 3 = Right
+        int edge = Random.Range(0, 4);
+        Vector2 spawnPos = Vector2.zero;
+
+        switch (edge)
         {
-            spawnX = (spawnX < cameraPosition.x) ? cameraPosition.x - spawnPadding : cameraPosition.x + spawnPadding;
-        }
-        if(spawnY > cameraPosition.y - spawnPadding && spawnY < cameraPosition.y + spawnPadding)
-        {
-            spawnY = (spawnY < cameraPosition.y) ? cameraPosition.y - spawnPadding : cameraPosition.y + spawnPadding;
+            case 0: // Top
+                spawnPos.x = Random.Range(camCenter.x - halfWidth - spawnBuffer, camCenter.x + halfWidth + spawnBuffer);
+                spawnPos.y = camCenter.y + halfHeight + spawnBuffer;
+                break;
+
+            case 1: // Bottom
+                spawnPos.x = Random.Range(camCenter.x - halfWidth - spawnBuffer, camCenter.x + halfWidth + spawnBuffer);
+                spawnPos.y = camCenter.y - halfHeight - spawnBuffer;
+                break;
+
+            case 2: // Left
+                spawnPos.x = camCenter.x - halfWidth - spawnBuffer;
+                spawnPos.y = Random.Range(camCenter.y - halfHeight - spawnBuffer, camCenter.y + halfHeight + spawnBuffer);
+                break;
+
+            case 3: // Right
+                spawnPos.x = camCenter.x + halfWidth - spawnBuffer;
+                spawnPos.y = Random.Range(camCenter.y - halfHeight - spawnBuffer, camCenter.y + halfHeight + spawnBuffer);
+                break;
         }
 
-        return new Vector3(spawnX, spawnY, 0f);
+        return spawnPos;
     }
 }

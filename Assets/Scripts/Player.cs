@@ -1,41 +1,56 @@
-using UnityEngine;
+﻿using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class Player : MonoBehaviour
 {
-    //Initial base status of the player
-    [SerializeField] private static float baseHealth = 100;
-    [SerializeField] private static float baseAttack= 10f;
-    [SerializeField] private static float baseDefense = 5f;
-    [SerializeField] private static float baseSpeed = 5f;
+    [Header("Base Stats")]
+    [SerializeField] private float baseHealth = 100f;
+    [SerializeField] private float baseAttack = 10f;
+    [SerializeField] private float baseAttackSpeed = 0.25f;
+    [SerializeField] private float baseSpeed = 5f;
 
-    //Initial current status of the player
-    private float currentHealth = baseHealth;
-    private float currentAttack = baseAttack;
-    private float currentDefense = baseDefense;
-    private float currentSpeed = baseSpeed;
+    // Runtime stats
+    private float currentHealth;
+    private float currentAttack;
+    private float currentAttackSpeed;
+    private float currentSpeed;
 
-    //IDK 
+    [Header("Prefabs & References")]
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Transform firePoint;
+
     private Rigidbody2D rb;
     private Animator animator;
+    private Collider2D playerCollider;
+    private Camera mainCam;
+    private float attackTimer = 0f;
 
-    //Awake is called when the script instance is being loaded
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        playerCollider = GetComponent<Collider2D>();
+        mainCam = Camera.main;
     }
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        currentHealth = baseHealth;
+        currentAttack = baseAttack;
+        currentAttackSpeed = baseAttackSpeed;
+        currentSpeed = baseSpeed;
     }
 
-    // Update is called once per frame
     void Update()
     {
+        if (attackTimer > 0f)
+        {
+            attackTimer -= Time.deltaTime;
+        }
+
         HandleMovement();
         UpdateAnimation();
+        Fire();
     }
 
     void HandleMovement()
@@ -43,23 +58,14 @@ public class Player : MonoBehaviour
         float horizontalInput = Input.GetAxisRaw("Horizontal");
         float verticalInput = Input.GetAxisRaw("Vertical");
 
-        if(horizontalInput != 0 && verticalInput != 0)
-        {
-            currentSpeed = Mathf.Sqrt(baseSpeed * baseSpeed / 2);
-        }
-        else
-        {
-            currentSpeed = baseSpeed;
-        }
+        Vector2 moveInput = new Vector2(horizontalInput, verticalInput).normalized;
+        rb.linearVelocity = moveInput * currentSpeed;
 
-        rb.linearVelocity = new Vector2(horizontalInput * currentSpeed, verticalInput * currentSpeed);
-
-        // Move the player in the direction of the input
         if (horizontalInput > 0)
         {
             transform.localScale = new Vector3(1, 1, 1);
         }
-        else if(horizontalInput < 0)
+        else if (horizontalInput < 0)
         {
             transform.localScale = new Vector3(-1, 1, 1);
         }
@@ -67,24 +73,57 @@ public class Player : MonoBehaviour
 
     void UpdateAnimation()
     {
-        bool isRunning = Mathf.Abs(rb.linearVelocity.x) > 0.1f || Mathf.Abs(rb.linearVelocity.y) > 0.1f;
-        if(isRunning)
+        if (animator != null)
         {
-            animator.SetBool("isRunning", true);
+            bool isRunning = rb.linearVelocity.sqrMagnitude > 0.01f;
+            animator.SetBool("isRunning", isRunning);
         }
-        else
+    }
+
+    void Fire()
+    {
+        if (!Input.GetMouseButton(0) || attackTimer > 0f) return;
+        if (bulletPrefab == null)
         {
-            animator.SetBool("isRunning", false);
+            Debug.LogWarning("Chưa gán Bullet Prefab vào Player!");
+            return;
+        }
+
+        if (mainCam == null) mainCam = Camera.main;
+        if (mainCam == null) return;
+
+        attackTimer = currentAttackSpeed;
+
+        Vector3 mouseScreenPos = Input.mousePosition;
+        mouseScreenPos.z = -mainCam.transform.position.z;
+        Vector3 mouseWorldPos = mainCam.ScreenToWorldPoint(mouseScreenPos);
+
+        Vector3 spawnPos = firePoint != null ? firePoint.position : transform.position;
+
+        GameObject bulletObj = Instantiate(bulletPrefab, spawnPos, Quaternion.identity);
+
+        Collider2D bulletCol = bulletObj.GetComponent<Collider2D>();
+        if (bulletCol != null && playerCollider != null)
+        {
+            Physics2D.IgnoreCollision(playerCollider, bulletCol, true);
+        }
+
+        Bullet bullet = bulletObj.GetComponent<Bullet>();
+        if (bullet != null)
+        {
+            bullet.SetBulletDmg(currentAttack);
+            bullet.Shoot(mouseWorldPos);
         }
     }
 
     public void TakeDamage(float damage)
     {
         currentHealth -= damage;
-        print("Player took " + damage + " damage. Current health: " + currentHealth);
+        Debug.Log($"Player took {damage} damage. Current health: {currentHealth}");
+
         if (currentHealth <= 0)
         {
-            print("Player has died.");
+            Debug.Log("Player has died.");
         }
     }
 }
